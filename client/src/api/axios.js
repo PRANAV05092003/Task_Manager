@@ -2,13 +2,7 @@ import axios from "axios";
 
 export function getApiUrl(path) {
   const base = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
-
-  if (!base) {
-    throw new Error(
-      "VITE_API_URL is not set. Add it in Railway client variables and redeploy."
-    );
-  }
-
+  if (!base) return null;
   const endpoint = path.startsWith("/") ? path : `/${path}`;
   return `${base}${endpoint}`;
 }
@@ -21,7 +15,11 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   if (config.url && !config.url.startsWith("http")) {
-    config.url = getApiUrl(config.url);
+    const fullUrl = getApiUrl(config.url);
+    if (!fullUrl) {
+      return Promise.reject(new Error("API URL is not configured"));
+    }
+    config.url = fullUrl;
   }
   return config;
 });

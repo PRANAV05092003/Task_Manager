@@ -19,7 +19,11 @@ const emptyForm = {
 const Dashboard = () => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    import.meta.env.VITE_API_URL
+      ? ""
+      : "API URL is not configured. Rebuild the client with VITE_API_URL set."
+  );
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -28,17 +32,22 @@ const Dashboard = () => {
   const fetchTasks = async () => {
     try {
       const { data } = await api.get("/tasks");
-      setTasks(data);
+      setTasks(Array.isArray(data) ? data : []);
       setError("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load tasks");
+      setTasks([]);
+      setError(err.message || "Failed to load tasks");
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchTasks();
+    if (import.meta.env.VITE_API_URL) {
+      fetchTasks();
+    } else {
+      setLoading(false);
+    }
   }, []);
 
   const handleFormChange = (e) => {
@@ -72,7 +81,7 @@ const Dashboard = () => {
       resetForm();
       await fetchTasks();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to save task");
+      setError(err.message || "Failed to save task");
     } finally {
       setSubmitting(false);
     }
@@ -97,7 +106,7 @@ const Dashboard = () => {
       await api.delete(`/tasks/${id}`);
       await fetchTasks();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete task");
+      setError(err.message || "Failed to delete task");
     }
   };
 
@@ -106,7 +115,7 @@ const Dashboard = () => {
       await api.put(`/tasks/${task._id}`, { status: newStatus });
       await fetchTasks();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update status");
+      setError(err.message || "Failed to update status");
     }
   };
 
@@ -245,7 +254,7 @@ const Dashboard = () => {
           <div className="grid gap-4">
             {tasks.map((task) => (
               <TaskCard
-                key={task._id}
+                key={task._id || task.title}
                 task={task}
                 onEdit={handleEdit}
                 onDelete={handleDelete}

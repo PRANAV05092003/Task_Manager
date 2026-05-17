@@ -16,6 +16,10 @@ app.get("/health", (req, res) => {
 });
 
 app.get("*", (req, res) => {
+  // Do not serve index.html for missing JS/CSS/assets (prevents blank screen)
+  if (req.path.startsWith("/assets") || /\.[a-zA-Z0-9]+$/.test(req.path)) {
+    return res.status(404).send("Not found");
+  }
   res.sendFile(path.join(__dirname, "dist", "index.html"));
 });
 

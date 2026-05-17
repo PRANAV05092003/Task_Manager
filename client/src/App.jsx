@@ -1,12 +1,11 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard.jsx";
 
 function App() {
   return (
     <Routes>
+      <Route path="/" element={<Dashboard />} />
       <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
