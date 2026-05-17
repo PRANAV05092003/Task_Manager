@@ -14,12 +14,22 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 
+const clientOrigin = process.env.CLIENT_URL?.replace(/\/+$/, "");
+console.log("[Server] CORS origin:", clientOrigin || "(not set)");
+
 app.use(
   cors({
-    origin: process.env.CLIENT_URL,
+    origin: clientOrigin || true,
     credentials: true,
   })
 );
+
+app.use((req, res, next) => {
+  if (req.path.startsWith("/api")) {
+    console.log(`[Server] ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
 
 app.get("/", (req, res) => {
   res.send("Backend running");

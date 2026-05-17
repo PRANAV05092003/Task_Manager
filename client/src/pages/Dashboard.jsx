@@ -31,7 +31,7 @@ const Dashboard = () => {
 
   const fetchTasks = async () => {
     try {
-      const { data } = await api.get("/api/tasks");
+      const { data } = await api.get("/tasks");
       setTasks(data);
       setError("");
     } catch (err) {
@@ -73,9 +73,9 @@ const Dashboard = () => {
       };
 
       if (editingId) {
-        await api.put(`/api/tasks/${editingId}`, payload);
+        await api.put(`/tasks/${editingId}`, payload);
       } else {
-        await api.post("/api/tasks", payload);
+        await api.post("/tasks", payload);
       }
 
       resetForm();
@@ -103,7 +103,7 @@ const Dashboard = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this task?")) return;
     try {
-      await api.delete(`/api/tasks/${id}`);
+      await api.delete(`/tasks/${id}`);
       await fetchTasks();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to delete task");
@@ -112,7 +112,7 @@ const Dashboard = () => {
 
   const handleStatusChange = async (task, newStatus) => {
     try {
-      await api.put(`/api/tasks/${task._id}`, { status: newStatus });
+      await api.put(`/tasks/${task._id}`, { status: newStatus });
       await fetchTasks();
     } catch (err) {
       setError(err.response?.data?.message || "Failed to update status");

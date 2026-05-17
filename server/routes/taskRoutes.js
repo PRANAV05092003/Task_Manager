@@ -6,10 +6,11 @@ import {
   deleteTask,
 } from "../controllers/taskController.js";
 import { protect } from "../middleware/authMiddleware.js";
+import { requireDb } from "../middleware/dbMiddleware.js";
 
 const router = express.Router();
 
-router.use(protect);
+router.use(protect, requireDb);
 
 router.route("/").get(getTasks).post(createTask);
 router.route("/:id").put(updateTask).delete(deleteTask);

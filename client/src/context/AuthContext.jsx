@@ -11,9 +11,10 @@ export const AuthProvider = ({ children }) => {
     const token = localStorage.getItem("token");
     if (token) {
       api
-        .get("/api/auth/me")
+        .get("/auth/me")
         .then((res) => setUser(res.data))
-        .catch(() => {
+        .catch((err) => {
+          console.error("[Auth] Session check failed:", err.response?.data?.message);
           localStorage.removeItem("token");
           setUser(null);
         })
@@ -24,16 +25,21 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    const { data } = await api.post("/api/auth/login", { email, password });
+    console.log("[Auth] Login attempt:", email);
+    const { data } = await api.post("/auth/login", {
+      email: email.trim().toLowerCase(),
+      password,
+    });
     localStorage.setItem("token", data.token);
     setUser({ _id: data._id, name: data.name, email: data.email });
     return data;
   };
 
   const signup = async (name, email, password) => {
-    const { data } = await api.post("/api/auth/signup", {
-      name,
-      email,
+    console.log("[Auth] Signup attempt:", email);
+    const { data } = await api.post("/auth/signup", {
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
       password,
     });
     localStorage.setItem("token", data.token);

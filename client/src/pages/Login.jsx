@@ -22,7 +22,10 @@ const Login = () => {
       await login(email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed");
+      setError(
+        err.response?.data?.message ||
+          (err.message?.includes("Network") ? "Cannot reach API — check VITE_API_URL" : "Login failed")
+      );
     } finally {
       setLoading(false);
     }

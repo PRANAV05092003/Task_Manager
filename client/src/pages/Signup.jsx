@@ -23,7 +23,10 @@ const Signup = () => {
       await signup(name, email, password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Signup failed");
+      setError(
+        err.response?.data?.message ||
+          (err.message?.includes("Network") ? "Cannot reach API — check VITE_API_URL" : "Signup failed")
+      );
     } finally {
       setLoading(false);
     }
