@@ -1,246 +1,242 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
-import { useTasks } from "../hooks/useTasks.js";
-import StatCard from "../components/StatCard.jsx";
-import TaskCard from "../components/TaskCard.jsx";
-import TaskModal from "../components/TaskModal.jsx";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Sparkles, Zap } from "lucide-react";
+import Sidebar from "../components/layout/Sidebar.jsx";
+import Topbar from "../components/layout/Topbar.jsx";
+import KanbanBoard from "../components/dashboard/KanbanBoard.jsx";
+import AnalyticsPanel from "../components/dashboard/AnalyticsPanel.jsx";
+import OverviewWidgets from "../components/dashboard/OverviewWidgets.jsx";
+import CalendarWidget from "../components/dashboard/CalendarWidget.jsx";
+import TaskFormModal from "../components/dashboard/TaskFormModal.jsx";
+import TaskDetailModal from "../components/dashboard/TaskDetailModal.jsx";
+import { useTasks } from "../context/TasksContext.jsx";
+import { getAnalytics, getTaskColumn } from "../utils/taskHelpers.js";
 
-const emptyForm = {
-  title: "",
-  description: "",
-  status: "pending",
-  dueDate: "",
+const sectionTitles = {
+  overview: { title: "Dashboard", subtitle: "Your productivity command center" },
+  board: { title: "Kanban Board", subtitle: "Drag tasks across columns" },
+  analytics: { title: "Analytics", subtitle: "Track team performance" },
+  calendar: { title: "Calendar", subtitle: "Upcoming deadlines" },
+  team: { title: "Team", subtitle: "Collaboration overview" },
 };
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const {
-    tasks,
-    loading,
-    error,
-    createTask,
-    updateTask,
-    deleteTask,
-    clearError,
-  } = useTasks();
+  const { tasks, metaMap, loading, createTask, updateTask, deleteTask } = useTasks();
+  const [section, setSection] = useState("overview");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
+  const [search, setSearch] = useState("");
+  const [formOpen, setFormOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(null);
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (error?.includes("Session expired")) {
-      logout();
-      navigate("/login", { replace: true });
-    }
-  }, [error, logout, navigate]);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
-
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-
-  const stats = {
-    total: tasks.length,
-    pending: tasks.filter((t) => t.status === "pending").length,
-    inProgress: tasks.filter((t) => t.status === "in-progress").length,
-    completed: tasks.filter((t) => t.status === "completed").length,
-  };
+  const stats = getAnalytics(tasks, metaMap);
+  const meta = selected ? metaMap[selected._id] : null;
 
   const openCreate = () => {
-    setForm(emptyForm);
-    setEditingId(null);
-    setModalOpen(true);
-    clearError();
+    setEditing(null);
+    setFormOpen(true);
   };
 
-  const openEdit = (task) => {
-    setForm({
-      title: task.title,
-      description: task.description || "",
-      status: task.status,
-      dueDate: task.dueDate
-        ? new Date(task.dueDate).toISOString().split("T")[0]
-        : "",
-    });
-    setEditingId(task._id);
-    setModalOpen(true);
+  const openDetail = (task) => {
+    setSelected(task);
+    setDetailOpen(true);
   };
 
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingId(null);
-    setForm(emptyForm);
-  };
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    const payload = {
-      title: form.title.trim(),
-      description: form.description.trim(),
-      status: form.status,
-      dueDate: form.dueDate || null,
-    };
+  const handleFormSubmit = async (payload) => {
+    setSaving(true);
+    const { priority, column, labels, ...taskData } = payload;
     try {
-      if (editingId) {
-        await updateTask(editingId, payload);
+      if (editing) {
+        await updateTask(
+          editing._id,
+          { title: taskData.title, description: taskData.description, dueDate: taskData.dueDate },
+          { priority, column, labels }
+        );
       } else {
-        await createTask(payload);
+        await createTask(taskData, { priority, column, labels });
       }
-      closeModal();
-    } catch (err) {
-      // useTasks handles fallback
+      setFormOpen(false);
+      setEditing(null);
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
+  };
+
+  const handleEditFromDetail = (task) => {
+    setDetailOpen(false);
+    setEditing({
+      ...task,
+      priority: metaMap[task._id]?.priority || "medium",
+      column: getTaskColumn(task, metaMap[task._id]),
+      labels: metaMap[task._id]?.labels || [],
+    });
+    setFormOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this task?")) return;
     await deleteTask(id);
+    setDetailOpen(false);
+    setSelected(null);
   };
 
-  const handleStatusChange = async (task, newStatus) => {
-    await updateTask(task._id, { status: newStatus });
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton h-28" />
+          ))}
+        </div>
+      );
+    }
+
+    switch (section) {
+      case "board":
+        return <KanbanBoard search={search} onTaskClick={openDetail} />;
+      case "analytics":
+        return <AnalyticsPanel />;
+      case "calendar":
+        return (
+          <div className="grid lg:grid-cols-2 gap-6">
+            <CalendarWidget />
+            <OverviewWidgets onGoBoard={() => setSection("board")} />
+          </div>
+        );
+      case "team":
+        return <OverviewWidgets onGoBoard={() => setSection("board")} />;
+      default:
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "Total", value: stats.total, gradient: "from-indigo-500/20 to-violet-500/10" },
+                { label: "Completed", value: stats.completed, gradient: "from-emerald-500/20 to-green-500/10" },
+                { label: "Pending", value: stats.pending, gradient: "from-amber-500/20 to-orange-500/10" },
+                { label: "Overdue", value: stats.overdue, gradient: "from-red-500/20 to-rose-500/10" },
+              ].map((s, i) => (
+                <motion.div
+                  key={s.label}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className={`glass-card p-5 bg-gradient-to-br ${s.gradient}`}
+                >
+                  <p className="text-sm text-[var(--text-muted)]">{s.label}</p>
+                  <p className="text-3xl font-bold font-display mt-1 text-[var(--text-primary)]">{s.value}</p>
+                </motion.div>
+              ))}
+            </div>
+            <OverviewWidgets onGoBoard={() => setSection("board")} />
+            <div>
+              <h3 className="font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-amber-400" /> Quick board preview
+              </h3>
+              <KanbanBoard search={search} onTaskClick={openDetail} />
+            </div>
+          </div>
+        );
+    }
   };
+
+  const { title, subtitle } = sectionTitles[section] || sectionTitles.overview;
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      {/* Ambient background */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl" />
-        <div className="absolute top-1/2 -left-40 w-80 h-80 rounded-full bg-violet-600/15 blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl" />
+    <div className="min-h-screen flex bg-[var(--bg)]">
+      <div className="fixed inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-violet-600/15 rounded-full blur-3xl" />
       </div>
 
-      {/* Header */}
-      <header className="relative border-b border-white/5 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-              </svg>
+      <Sidebar
+        active={section}
+        onNavigate={(id) => {
+          setSection(id);
+          setMobileNav(false);
+        }}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
+
+      {mobileNav && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setMobileNav(false)}
+        />
+      )}
+
+      <motion.aside
+        className={`fixed md:hidden z-50 h-full ${mobileNav ? "translate-x-0" : "-translate-x-full"} transition-transform`}
+      >
+        <Sidebar
+          active={section}
+          onNavigate={(id) => {
+            setSection(id);
+            setMobileNav(false);
+          }}
+          collapsed={false}
+          onToggle={() => setMobileNav(false)}
+        />
+      </motion.aside>
+
+      <div className="flex-1 flex flex-col min-w-0 relative">
+        <Topbar
+          onMenuClick={() => setMobileNav(true)}
+          onNewTask={openCreate}
+          search={search}
+          onSearch={setSearch}
+        />
+
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto custom-scrollbar">
+          <motion.div
+            key={section}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-3 mb-1">
+              <Sparkles className="w-6 h-6 text-indigo-400" />
+              <h1 className="text-2xl sm:text-3xl font-bold font-display text-[var(--text-primary)]">{title}</h1>
             </div>
-            <div>
-              <h1 className="text-lg font-bold text-white font-display tracking-tight">
-                Ithara.ai
-              </h1>
-              <p className="text-xs text-slate-400">
-                Hi, {user?.name?.split(" ")[0] || "there"}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={openCreate} className="btn-primary flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              New Task
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-300 border border-slate-700 hover:bg-slate-800 transition-colors"
+            <p className="text-[var(--text-muted)]">{subtitle}</p>
+          </motion.div>
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={section + (loading ? "load" : "ready")}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+              {renderContent()}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
 
-      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Hero */}
-        <section className="mb-10">
-          <h2 className="text-2xl sm:text-3xl font-bold text-white font-display tracking-tight">
-            Good to see you, {user?.name?.split(" ")[0] || "there"} 👋
-          </h2>
-          <p className="text-slate-400 mt-1 max-w-xl">
-            Organize your team&apos;s work, track progress, and ship faster — all in one place.
-          </p>
-        </section>
+      <TaskFormModal
+        open={formOpen}
+        onClose={() => {
+          setFormOpen(false);
+          setEditing(null);
+        }}
+        onSubmit={handleFormSubmit}
+        initial={editing}
+        loading={saving}
+      />
 
-        {error && (
-          <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
-            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            <span>{error}</span>
-            <button type="button" onClick={clearError} className="ml-auto text-red-400 hover:text-red-300">
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
-          <StatCard label="Total Tasks" value={stats.total} type="total" />
-          <StatCard label="Pending" value={stats.pending} type="pending" />
-          <StatCard label="In Progress" value={stats.inProgress} type="in-progress" />
-          <StatCard label="Completed" value={stats.completed} type="completed" />
-        </div>
-
-        {/* Tasks */}
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-semibold text-white font-display">Your Tasks</h3>
-            <span className="text-sm text-slate-500">{tasks.length} total</span>
-          </div>
-
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="skeleton h-24" />
-              ))}
-            </div>
-          ) : tasks.length === 0 ? (
-            <div className="text-center py-16 px-6 rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/50">
-              <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-4">
-                <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-              </div>
-              <h4 className="text-white font-medium mb-1">No tasks yet</h4>
-              <p className="text-slate-500 text-sm mb-6">Create your first task to get started</p>
-              <button type="button" onClick={openCreate} className="btn-primary">
-                Create your first task
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {tasks.map((task) => (
-                <TaskCard
-                  key={task._id || task.title}
-                  task={task}
-                  onEdit={openEdit}
-                  onDelete={handleDelete}
-                  onStatusChange={handleStatusChange}
-                />
-              ))}
-            </div>
-          )}
-        </section>
-      </main>
-
-      <TaskModal
-        open={modalOpen}
-        editing={!!editingId}
-        form={form}
-        onChange={handleFormChange}
-        onSubmit={handleSubmit}
-        onClose={closeModal}
-        submitting={submitting}
+      <TaskDetailModal
+        task={selected}
+        meta={meta}
+        open={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        onEdit={handleEditFromDetail}
+        onDelete={handleDelete}
       />
     </div>
   );
 }
-
