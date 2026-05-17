@@ -13,8 +13,7 @@ export const AuthProvider = ({ children }) => {
       api
         .get("/auth/me")
         .then((res) => setUser(res.data))
-        .catch((err) => {
-          console.error("[Auth] Session check failed:", err.response?.data?.message);
+        .catch(() => {
           localStorage.removeItem("token");
           setUser(null);
         })
@@ -25,7 +24,6 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
-    console.log("[Auth] Login attempt:", email);
     const { data } = await api.post("/auth/login", {
       email: email.trim().toLowerCase(),
       password,
@@ -36,7 +34,6 @@ export const AuthProvider = ({ children }) => {
   };
 
   const signup = async (name, email, password) => {
-    console.log("[Auth] Signup attempt:", email);
     const { data } = await api.post("/auth/signup", {
       name: name.trim(),
       email: email.trim().toLowerCase(),

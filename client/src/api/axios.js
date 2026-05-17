@@ -1,40 +1,49 @@
 import axios from "axios";
 
-// VITE_API_URL must be: https://your-backend.up.railway.app/api  (ONLY ONE /api)
-export const API_URL = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+/**
+ * Builds full API URL: https://backend.up.railway.app/api/auth/signup
+ * VITE_API_URL must be set at build time (Railway client env var).
+ */
+export function getApiUrl(path) {
+  const base = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
 
-if (!API_URL) {
-  console.error("[API] VITE_API_URL is not set");
-} else {
-  console.log("[API] Base URL:", API_URL);
+  if (!base) {
+    throw new Error(
+      "VITE_API_URL is not set. Add it in Railway client variables and redeploy."
+    );
+  }
+
+  const endpoint = path.startsWith("/") ? path : `/${path}`;
+  return `${base}${endpoint}`;
 }
 
 const api = axios.create({
-  baseURL: API_URL,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 api.interceptors.request.use((config) => {
+  if (config.url && !config.url.startsWith("http")) {
+    config.url = getApiUrl(config.url);
+  }
+
   const token = localStorage.getItem("token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  // Final URL = VITE_API_URL + /auth/signup  →  .../api/auth/signup
-  console.log("[API] Request:", config.method?.toUpperCase(), `${API_URL}${config.url}`);
+
   return config;
 });
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error(
-      "[API] Error:",
-      error.response?.status,
-      error.response?.data?.message || error.message
-    );
-    return Promise.reject(error);
+    const message =
+      error.response?.data?.message ||
+      error.message ||
+      "Request failed — check VITE_API_URL and redeploy client";
+    return Promise.reject(new Error(message));
   }
 );
 
