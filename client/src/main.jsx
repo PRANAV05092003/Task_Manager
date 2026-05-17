@@ -5,6 +5,7 @@ import { Toaster } from "react-hot-toast";
 import App from "./App.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
 import { TasksProvider } from "./context/TasksContext.jsx";
+import { TeamProvider } from "./context/TeamContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
 import "./index.css";
 
@@ -19,7 +20,9 @@ ReactDOM.createRoot(root).render(
     <BrowserRouter>
       <ThemeProvider>
         <TasksProvider>
-          <App />
+          <TeamProvider>
+            <App />
+          </TeamProvider>
           <Toaster
             position="bottom-right"
             toastOptions={{

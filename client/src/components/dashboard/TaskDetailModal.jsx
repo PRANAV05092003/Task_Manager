@@ -1,11 +1,14 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar, Trash2, MessageSquare, Paperclip, Send } from "lucide-react";
+import { X, Calendar, Trash2, MessageSquare, Paperclip, Send, User } from "lucide-react";
 import { useState } from "react";
 import { PRIORITIES, formatDue, getTaskColumn } from "../../utils/taskHelpers.js";
 import { useTasks } from "../../context/TasksContext.jsx";
+import { useTeam } from "../../context/TeamContext.jsx";
+import MemberAvatar from "../team/MemberAvatar.jsx";
 
 export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onDelete }) {
-  const { persistMeta, metaMap } = useTasks();
+  const { persistMeta, metaMap, updateTask } = useTasks();
+  const { members, getMember } = useTeam();
   const [comment, setComment] = useState("");
 
   if (!task) return null;
@@ -13,6 +16,7 @@ export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onD
   const priority = PRIORITIES[meta?.priority || "medium"];
   const column = getTaskColumn(task, meta);
   const comments = meta?.comments || [];
+  const assignee = getMember(meta?.assigneeId);
 
   const addComment = () => {
     if (!comment.trim()) return;
@@ -25,6 +29,10 @@ export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onD
     };
     persistMeta(next);
     setComment("");
+  };
+
+  const handleAssigneeChange = async (assigneeId) => {
+    await updateTask(task._id, {}, { assigneeId: assigneeId || null });
   };
 
   return (
@@ -59,6 +67,33 @@ export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onD
               <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--hover)] text-[var(--text-muted)]">
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            <div className="mb-6 p-4 rounded-xl bg-[var(--hover)] border border-[var(--border)]">
+              <h3 className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-2 mb-3">
+                <User className="w-4 h-4" /> Assigned to
+              </h3>
+              <div className="flex items-center gap-3 mb-3">
+                <MemberAvatar member={assignee} size="md" />
+                <div>
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                    {assignee ? assignee.name : "Unassigned"}
+                  </p>
+                  {assignee && <p className="text-xs text-[var(--text-muted)]">{assignee.role}</p>}
+                </div>
+              </div>
+              <select
+                className="input-field"
+                value={meta?.assigneeId || ""}
+                onChange={(e) => handleAssigneeChange(e.target.value)}
+              >
+                <option value="">Unassigned</option>
+                {members.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {task.description && (

@@ -77,6 +77,7 @@ export const TasksProvider = ({ children }) => {
       priority: meta.priority || "medium",
       column: meta.column || "todo",
       labels: meta.labels || [],
+      assigneeId: meta.assigneeId || null,
       comments: [],
     };
 

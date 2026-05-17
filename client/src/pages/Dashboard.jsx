@@ -6,6 +6,7 @@ import Topbar from "../components/layout/Topbar.jsx";
 import KanbanBoard from "../components/dashboard/KanbanBoard.jsx";
 import AnalyticsPanel from "../components/dashboard/AnalyticsPanel.jsx";
 import OverviewWidgets from "../components/dashboard/OverviewWidgets.jsx";
+import TeamPanel from "../components/team/TeamPanel.jsx";
 import CalendarWidget from "../components/dashboard/CalendarWidget.jsx";
 import TaskFormModal from "../components/dashboard/TaskFormModal.jsx";
 import TaskDetailModal from "../components/dashboard/TaskDetailModal.jsx";
@@ -47,16 +48,16 @@ export default function Dashboard() {
 
   const handleFormSubmit = async (payload) => {
     setSaving(true);
-    const { priority, column, labels, ...taskData } = payload;
+    const { priority, column, labels, assigneeId, ...taskData } = payload;
     try {
       if (editing) {
         await updateTask(
           editing._id,
           { title: taskData.title, description: taskData.description, dueDate: taskData.dueDate },
-          { priority, column, labels }
+          { priority, column, labels, assigneeId }
         );
       } else {
-        await createTask(taskData, { priority, column, labels });
+        await createTask(taskData, { priority, column, labels, assigneeId });
       }
       setFormOpen(false);
       setEditing(null);
@@ -72,6 +73,7 @@ export default function Dashboard() {
       priority: metaMap[task._id]?.priority || "medium",
       column: getTaskColumn(task, metaMap[task._id]),
       labels: metaMap[task._id]?.labels || [],
+      assigneeId: metaMap[task._id]?.assigneeId || "",
     });
     setFormOpen(true);
   };
@@ -102,11 +104,11 @@ export default function Dashboard() {
         return (
           <div className="grid lg:grid-cols-2 gap-6">
             <CalendarWidget />
-            <OverviewWidgets onGoBoard={() => setSection("board")} />
+            <OverviewWidgets onGoBoard={() => setSection("board")} onManageTeam={() => setSection("team")} />
           </div>
         );
       case "team":
-        return <OverviewWidgets onGoBoard={() => setSection("board")} />;
+        return <TeamPanel />;
       default:
         return (
           <div className="space-y-6">
@@ -129,7 +131,7 @@ export default function Dashboard() {
                 </motion.div>
               ))}
             </div>
-            <OverviewWidgets onGoBoard={() => setSection("board")} />
+            <OverviewWidgets onGoBoard={() => setSection("board")} onManageTeam={() => setSection("team")} />
             <div>
               <h3 className="font-semibold text-[var(--text-primary)] mb-4 flex items-center gap-2">
                 <Zap className="w-4 h-4 text-amber-400" /> Quick board preview

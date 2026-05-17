@@ -2,8 +2,12 @@ import { motion } from "framer-motion";
 import { useDraggable } from "@dnd-kit/core";
 import { Calendar, GripVertical, MessageSquare, Paperclip } from "lucide-react";
 import { PRIORITIES, formatDue, isOverdue } from "../../utils/taskHelpers.js";
+import { useTeam } from "../../context/TeamContext.jsx";
+import MemberAvatar from "../team/MemberAvatar.jsx";
 
 export default function KanbanTaskCard({ task, meta, onClick }) {
+  const { getMember } = useTeam();
+  const assignee = getMember(meta?.assigneeId);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task._id,
   });
@@ -70,9 +74,7 @@ export default function KanbanTaskCard({ task, meta, onClick }) {
         <div className="flex items-center gap-2">
           <MessageSquare className="w-3.5 h-3.5 opacity-50" />
           <Paperclip className="w-3.5 h-3.5 opacity-50" />
-          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-cyan-400 to-indigo-500 text-[10px] text-white flex items-center justify-center font-bold">
-            {(task.title || "T")[0].toUpperCase()}
-          </div>
+          <MemberAvatar member={assignee} size="sm" />
         </div>
       </div>
     </motion.div>
