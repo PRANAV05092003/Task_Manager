@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import api from "../api/axios.js";
+import api, { API_BASE } from "../api/axios.js";
 
 const AuthContext = createContext(null);
 
@@ -25,21 +25,39 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (email, password) => {
+    if (!API_BASE) {
+      throw new Error("API URL is not configured. Redeploy client with VITE_API_URL set.");
+    }
+
     const { data } = await api.post("/auth/login", {
       email: email.trim().toLowerCase(),
       password,
     });
+
+    if (!data?.token) {
+      throw new Error("Invalid response from server — no token received");
+    }
+
     localStorage.setItem("token", data.token);
     setUser({ _id: data._id, name: data.name, email: data.email });
     return data;
   };
 
   const signup = async (name, email, password) => {
+    if (!API_BASE) {
+      throw new Error("API URL is not configured. Redeploy client with VITE_API_URL set.");
+    }
+
     const { data } = await api.post("/auth/signup", {
       name: name.trim(),
       email: email.trim().toLowerCase(),
       password,
     });
+
+    if (!data?.token) {
+      throw new Error("Invalid response from server — no token received");
+    }
+
     localStorage.setItem("token", data.token);
     setUser({ _id: data._id, name: data.name, email: data.email });
     return data;
@@ -51,7 +69,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, apiBase: API_BASE }}>
       {children}
     </AuthContext.Provider>
   );

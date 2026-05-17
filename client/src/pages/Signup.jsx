@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import AuthLayout from "../components/AuthLayout.jsx";
+import ApiConfigBanner from "../components/ApiConfigBanner.jsx";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -43,6 +44,7 @@ export default function Signup() {
         </>
       }
     >
+      <ApiConfigBanner />
       {error && (
         <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
           {error}

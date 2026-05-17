@@ -1,32 +1,42 @@
 import axios from "axios";
 
 /**
- * VITE_API_URL should be: https://your-backend.up.railway.app/api
- * Paths like /tasks become: .../api/tasks
+ * Normalizes VITE_API_URL to: https://your-backend.up.railway.app/api
+ * Handles: with/without /api, trailing slashes, accidental double /api
  */
-export function getApiUrl(path) {
-  let base = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
-  if (!base) return null;
+export function normalizeApiBase(raw) {
+  let base = (raw || "").trim().replace(/\/+$/, "");
+  if (!base) return "";
 
-  if (!base.endsWith("/api")) {
+  base = base.replace(/\/api\/api$/i, "/api");
+
+  if (!base.toLowerCase().endsWith("/api")) {
     base = `${base}/api`;
   }
 
+  return base;
+}
+
+export const API_BASE = normalizeApiBase(import.meta.env.VITE_API_URL);
+
+export function getApiUrl(path) {
+  if (!API_BASE) return null;
   const endpoint = path.startsWith("/") ? path : `/${path}`;
-  return `${base}${endpoint}`;
+  return `${API_BASE}${endpoint}`;
 }
 
 const api = axios.create({
+  baseURL: API_BASE || undefined,
   headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use((config) => {
-  if (config.url && !config.url.startsWith("http")) {
-    const fullUrl = getApiUrl(config.url);
-    if (!fullUrl) {
-      return Promise.reject(new Error("API URL is not configured"));
-    }
-    config.url = fullUrl;
+  if (!API_BASE) {
+    return Promise.reject(
+      new Error(
+        "API URL is not configured. Set VITE_API_URL on Railway and redeploy the client."
+      )
+    );
   }
 
   const token = localStorage.getItem("token");
@@ -42,9 +52,22 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const serverMsg = error.response?.data?.message;
-    const message = serverMsg || error.message || "Request failed";
+    const triedUrl =
+      error.config?.baseURL && error.config?.url
+        ? `${error.config.baseURL}${error.config.url}`
+        : error.config?.url;
+
+    let message = serverMsg || error.message || "Request failed";
+
+    if (status === 404) {
+      message =
+        serverMsg ||
+        `API endpoint not found (404). Expected backend URL like https://your-server.up.railway.app/api — check VITE_API_URL on Railway and redeploy client.`;
+    }
+
     const err = new Error(message);
     err.status = status;
+    err.url = triedUrl;
     return Promise.reject(err);
   }
 );
