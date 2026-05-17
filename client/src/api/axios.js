@@ -1,9 +1,5 @@
 import axios from "axios";
 
-/**
- * Builds full API URL: https://backend.up.railway.app/api/auth/signup
- * VITE_API_URL must be set at build time (Railway client env var).
- */
 export function getApiUrl(path) {
   const base = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
 
@@ -27,12 +23,6 @@ api.interceptors.request.use((config) => {
   if (config.url && !config.url.startsWith("http")) {
     config.url = getApiUrl(config.url);
   }
-
-  const token = localStorage.getItem("token");
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-
   return config;
 });
 
@@ -42,7 +32,7 @@ api.interceptors.response.use(
     const message =
       error.response?.data?.message ||
       error.message ||
-      "Request failed — check VITE_API_URL and redeploy client";
+      "Request failed";
     return Promise.reject(new Error(message));
   }
 );

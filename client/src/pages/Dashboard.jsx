@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext.jsx";
 import api from "../api/axios.js";
 
 const STATUS_OPTIONS = ["pending", "in-progress", "completed"];
@@ -19,8 +17,6 @@ const emptyForm = {
 };
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -44,11 +40,6 @@ const Dashboard = () => {
   useEffect(() => {
     fetchTasks();
   }, []);
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-  };
 
   const handleFormChange = (e) => {
     const { name, value } = e.target;
@@ -129,19 +120,9 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-indigo-600">Ithara.ai</h1>
-            <p className="text-sm text-slate-600">
-              Welcome, {user?.name}
-            </p>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors self-start sm:self-auto"
-          >
-            Logout
-          </button>
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <h1 className="text-xl font-bold text-indigo-600">Ithara.ai</h1>
+          <p className="text-sm text-slate-600">Team Task Manager</p>
         </div>
       </header>
 
