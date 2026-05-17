@@ -1,16 +1,23 @@
 import axios from "axios";
 
+/**
+ * VITE_API_URL should be: https://your-backend.up.railway.app/api
+ * Paths like /tasks become: .../api/tasks
+ */
 export function getApiUrl(path) {
-  const base = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
+  let base = import.meta.env.VITE_API_URL?.trim().replace(/\/+$/, "");
   if (!base) return null;
+
+  if (!base.endsWith("/api")) {
+    base = `${base}/api`;
+  }
+
   const endpoint = path.startsWith("/") ? path : `/${path}`;
   return `${base}${endpoint}`;
 }
 
 const api = axios.create({
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use((config) => {
@@ -27,11 +34,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const message =
-      error.response?.data?.message ||
-      error.message ||
-      "Request failed";
-    return Promise.reject(new Error(message));
+    const status = error.response?.status;
+    const serverMsg = error.response?.data?.message;
+    const message = serverMsg || error.message || "Request failed";
+    const err = new Error(message);
+    err.status = status;
+    return Promise.reject(err);
   }
 );
 

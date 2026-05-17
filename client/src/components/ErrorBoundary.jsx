@@ -13,15 +13,15 @@ class ErrorBoundary extends Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
-          <div className="max-w-md w-full bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <h1 className="text-xl font-bold text-indigo-600 mb-2">Ithara.ai</h1>
-            <p className="text-slate-600 mb-4">Something went wrong loading the app.</p>
-            <p className="text-sm text-red-600 mb-6">{this.state.message}</p>
+        <div className="min-h-screen flex items-center justify-center bg-slate-950 px-4">
+          <div className="max-w-md w-full bg-slate-900 rounded-2xl border border-slate-700 p-8 text-center">
+            <h1 className="text-xl font-bold text-white font-display mb-2">Ithara.ai</h1>
+            <p className="text-slate-400 mb-4">Something went wrong loading the app.</p>
+            <p className="text-sm text-red-400 mb-6">{this.state.message}</p>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              className="btn-primary"
             >
               Reload page
             </button>

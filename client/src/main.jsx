@@ -18,3 +18,4 @@ ReactDOM.createRoot(root).render(
     </BrowserRouter>
   </ErrorBoundary>
 );
+

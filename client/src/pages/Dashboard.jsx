@@ -1,13 +1,8 @@
-import { useState, useEffect } from "react";
-import api from "../api/axios.js";
-
-const STATUS_OPTIONS = ["pending", "in-progress", "completed"];
-
-const statusColors = {
-  pending: "bg-amber-100 text-amber-800",
-  "in-progress": "bg-blue-100 text-blue-800",
-  completed: "bg-green-100 text-green-800",
-};
+import { useState } from "react";
+import { useTasks } from "../hooks/useTasks.js";
+import StatCard from "../components/StatCard.jsx";
+import TaskCard from "../components/TaskCard.jsx";
+import TaskModal from "../components/TaskModal.jsx";
 
 const emptyForm = {
   title: "",
@@ -16,78 +11,38 @@ const emptyForm = {
   dueDate: "",
 };
 
-const Dashboard = () => {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(
-    import.meta.env.VITE_API_URL
-      ? ""
-      : "API URL is not configured. Rebuild the client with VITE_API_URL set."
-  );
+export default function Dashboard() {
+  const {
+    tasks,
+    loading,
+    error,
+    useLocal,
+    createTask,
+    updateTask,
+    deleteTask,
+    clearError,
+  } = useTasks();
+
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
-  const [showForm, setShowForm] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchTasks = async () => {
-    try {
-      const { data } = await api.get("/tasks");
-      setTasks(Array.isArray(data) ? data : []);
-      setError("");
-    } catch (err) {
-      setTasks([]);
-      setError(err.message || "Failed to load tasks");
-    } finally {
-      setLoading(false);
-    }
+  const stats = {
+    total: tasks.length,
+    pending: tasks.filter((t) => t.status === "pending").length,
+    inProgress: tasks.filter((t) => t.status === "in-progress").length,
+    completed: tasks.filter((t) => t.status === "completed").length,
   };
 
-  useEffect(() => {
-    if (import.meta.env.VITE_API_URL) {
-      fetchTasks();
-    } else {
-      setLoading(false);
-    }
-  }, []);
-
-  const handleFormChange = (e) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const resetForm = () => {
+  const openCreate = () => {
     setForm(emptyForm);
     setEditingId(null);
-    setShowForm(false);
+    setModalOpen(true);
+    clearError();
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    try {
-      const payload = {
-        title: form.title,
-        description: form.description,
-        status: form.status,
-        dueDate: form.dueDate || null,
-      };
-
-      if (editingId) {
-        await api.put(`/tasks/${editingId}`, payload);
-      } else {
-        await api.post("/tasks", payload);
-      }
-
-      resetForm();
-      await fetchTasks();
-    } catch (err) {
-      setError(err.message || "Failed to save task");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleEdit = (task) => {
+  const openEdit = (task) => {
     setForm({
       title: task.title,
       description: task.description || "",
@@ -97,232 +52,174 @@ const Dashboard = () => {
         : "",
     });
     setEditingId(task._id);
-    setShowForm(true);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  };
+
+  const handleFormChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    const payload = {
+      title: form.title.trim(),
+      description: form.description.trim(),
+      status: form.status,
+      dueDate: form.dueDate || null,
+    };
+    try {
+      if (editingId) {
+        await updateTask(editingId, payload);
+      } else {
+        await createTask(payload);
+      }
+      closeModal();
+    } catch (err) {
+      // useTasks handles fallback
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this task?")) return;
-    try {
-      await api.delete(`/tasks/${id}`);
-      await fetchTasks();
-    } catch (err) {
-      setError(err.message || "Failed to delete task");
-    }
+    await deleteTask(id);
   };
 
   const handleStatusChange = async (task, newStatus) => {
-    try {
-      await api.put(`/tasks/${task._id}`, { status: newStatus });
-      await fetchTasks();
-    } catch (err) {
-      setError(err.message || "Failed to update status");
-    }
-  };
-
-  const stats = {
-    total: tasks.length,
-    pending: tasks.filter((t) => t.status === "pending").length,
-    inProgress: tasks.filter((t) => t.status === "in-progress").length,
-    completed: tasks.filter((t) => t.status === "completed").length,
+    await updateTask(task._id, { status: newStatus });
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <h1 className="text-xl font-bold text-indigo-600">Ithara.ai</h1>
-          <p className="text-sm text-slate-600">Team Task Manager</p>
+    <div className="min-h-screen bg-slate-950">
+      {/* Ambient background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="absolute top-1/2 -left-40 w-80 h-80 rounded-full bg-violet-600/15 blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl" />
+      </div>
+
+      {/* Header */}
+      <header className="relative border-b border-white/5 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+              </svg>
+            </div>
+            <div>
+              <h1 className="text-lg font-bold text-white font-display tracking-tight">
+                Ithara.ai
+              </h1>
+              <p className="text-xs text-slate-400">Team Task Manager</p>
+            </div>
+          </div>
+          <button type="button" onClick={openCreate} className="btn-primary flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+            </svg>
+            New Task
+          </button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-4 py-8">
+      <main className="relative max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        {/* Hero */}
+        <section className="mb-10">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white font-display tracking-tight">
+            Good to see you 👋
+          </h2>
+          <p className="text-slate-400 mt-1 max-w-xl">
+            Organize your team&apos;s work, track progress, and ship faster — all in one place.
+          </p>
+          {useLocal && (
+            <p className="mt-3 text-xs text-amber-400/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2 inline-block">
+              Working in local mode — tasks saved on this device
+            </p>
+          )}
+        </section>
+
         {error && (
-          <div className="mb-6 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200">
-            {error}
+          <div className="mb-6 flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <span>{error}</span>
+            <button type="button" onClick={clearError} className="ml-auto text-red-400 hover:text-red-300">
+              ×
+            </button>
           </div>
         )}
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          <StatCard label="Total" value={stats.total} />
-          <StatCard label="Pending" value={stats.pending} color="text-amber-600" />
-          <StatCard label="In Progress" value={stats.inProgress} color="text-blue-600" />
-          <StatCard label="Completed" value={stats.completed} color="text-green-600" />
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+          <StatCard label="Total Tasks" value={stats.total} type="total" />
+          <StatCard label="Pending" value={stats.pending} type="pending" />
+          <StatCard label="In Progress" value={stats.inProgress} type="in-progress" />
+          <StatCard label="Completed" value={stats.completed} type="completed" />
         </div>
 
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-semibold">Your Tasks</h2>
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            + New Task
-          </button>
-        </div>
+        {/* Tasks */}
+        <section>
+          <div className="flex items-center justify-between mb-5">
+            <h3 className="text-lg font-semibold text-white font-display">Your Tasks</h3>
+            <span className="text-sm text-slate-500">{tasks.length} total</span>
+          </div>
 
-        {showForm && (
-          <form
-            onSubmit={handleSubmit}
-            className="mb-8 bg-white rounded-xl border border-slate-200 p-6 space-y-4"
-          >
-            <h3 className="font-medium">
-              {editingId ? "Edit Task" : "Create Task"}
-            </h3>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Title
-                </label>
-                <input
-                  name="title"
-                  value={form.title}
-                  onChange={handleFormChange}
-                  required
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleFormChange}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Status
-                </label>
-                <select
-                  name="status"
-                  value={form.status}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  name="dueDate"
-                  value={form.dueDate}
-                  onChange={handleFormChange}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="skeleton h-24" />
+              ))}
             </div>
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                disabled={submitting}
-                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {submitting ? "Saving..." : editingId ? "Update" : "Create"}
-              </button>
-              <button
-                type="button"
-                onClick={resetForm}
-                className="px-4 py-2 text-sm font-medium text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
-              >
-                Cancel
+          ) : tasks.length === 0 ? (
+            <div className="text-center py-16 px-6 rounded-2xl border border-dashed border-slate-700/80 bg-slate-900/50">
+              <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-500/10 flex items-center justify-center mb-4">
+                <svg className="w-8 h-8 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <h4 className="text-white font-medium mb-1">No tasks yet</h4>
+              <p className="text-slate-500 text-sm mb-6">Create your first task to get started</p>
+              <button type="button" onClick={openCreate} className="btn-primary">
+                Create your first task
               </button>
             </div>
-          </form>
-        )}
-
-        {loading ? (
-          <p className="text-slate-600">Loading tasks...</p>
-        ) : tasks.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-xl border border-slate-200">
-            <p className="text-slate-600">No tasks yet. Create your first task!</p>
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            {tasks.map((task) => (
-              <TaskCard
-                key={task._id || task.title}
-                task={task}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onStatusChange={handleStatusChange}
-                statusColors={statusColors}
-              />
-            ))}
-          </div>
-        )}
+          ) : (
+            <div className="space-y-4">
+              {tasks.map((task) => (
+                <TaskCard
+                  key={task._id || task.title}
+                  task={task}
+                  onEdit={openEdit}
+                  onDelete={handleDelete}
+                  onStatusChange={handleStatusChange}
+                />
+              ))}
+            </div>
+          )}
+        </section>
       </main>
+
+      <TaskModal
+        open={modalOpen}
+        editing={!!editingId}
+        form={form}
+        onChange={handleFormChange}
+        onSubmit={handleSubmit}
+        onClose={closeModal}
+        submitting={submitting}
+      />
     </div>
   );
-};
-
-const StatCard = ({ label, value, color = "text-slate-900" }) => (
-  <div className="bg-white rounded-xl border border-slate-200 p-4">
-    <p className="text-sm text-slate-600">{label}</p>
-    <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
-  </div>
-);
-
-const TaskCard = ({ task, onEdit, onDelete, onStatusChange, statusColors }) => (
-  <div className="bg-white rounded-xl border border-slate-200 p-5">
-    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-slate-900">{task.title}</h3>
-          <span
-            className={`text-xs px-2 py-0.5 rounded-full font-medium ${statusColors[task.status]}`}
-          >
-            {task.status}
-          </span>
-        </div>
-        {task.description && (
-          <p className="text-sm text-slate-600 mt-2">{task.description}</p>
-        )}
-        {task.dueDate && (
-          <p className="text-xs text-slate-500 mt-2">
-            Due: {new Date(task.dueDate).toLocaleDateString()}
-          </p>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <select
-          value={task.status}
-          onChange={(e) => onStatusChange(task, e.target.value)}
-          className="text-sm px-2 py-1 border border-slate-300 rounded-lg"
-        >
-          <option value="pending">pending</option>
-          <option value="in-progress">in-progress</option>
-          <option value="completed">completed</option>
-        </select>
-        <button
-          onClick={() => onEdit(task)}
-          className="px-3 py-1 text-sm text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50"
-        >
-          Edit
-        </button>
-        <button
-          onClick={() => onDelete(task._id)}
-          className="px-3 py-1 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  </div>
-);
-
-export default Dashboard;
+}
 
