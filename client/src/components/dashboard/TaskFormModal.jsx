@@ -3,6 +3,7 @@ import { X, UserPlus, Plus } from "lucide-react";
 import { useState, useEffect } from "react";
 import { COLUMNS, PRIORITIES } from "../../utils/taskHelpers.js";
 import { useTeam } from "../../context/TeamContext.jsx";
+import { getRoleLabel } from "../../utils/teamHelpers.js";
 import MemberAvatar from "../team/MemberAvatar.jsx";
 import TeamMemberModal from "../team/TeamMemberModal.jsx";
 
@@ -43,7 +44,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, initial, loadin
   const handleAddMember = async (memberForm) => {
     setAddingMember(true);
     try {
-      const member = addMember(memberForm);
+      const member = await addMember(memberForm);
       if (member) {
         setForm((f) => ({ ...f, assigneeId: member.id }));
         setMemberModalOpen(false);
@@ -149,7 +150,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, initial, loadin
                         <option value="">Unassigned</option>
                         {members.map((m) => (
                           <option key={m.id} value={m.id}>
-                            {m.name} — {m.role}
+                            {m.name} — {getRoleLabel(m.role)}
                           </option>
                         ))}
                       </select>
@@ -158,7 +159,7 @@ export default function TaskFormModal({ open, onClose, onSubmit, initial, loadin
                           <MemberAvatar member={selectedMember} size="md" />
                           <div>
                             <p className="text-sm font-medium text-[var(--text-primary)]">{selectedMember.name}</p>
-                            <p className="text-xs text-[var(--text-muted)]">{selectedMember.role}</p>
+                            <p className="text-xs text-[var(--text-muted)]">{getRoleLabel(selectedMember.role)}</p>
                           </div>
                         </div>
                       )}

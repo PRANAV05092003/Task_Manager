@@ -14,7 +14,7 @@ export default function Signup() {
   const navigate = useNavigate();
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const handleSubmit = async (e) => {
@@ -23,7 +23,7 @@ export default function Signup() {
     setLoading(true);
     try {
       await signup(name, email, password);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message || "Signup failed. Please try again.");
     } finally {

@@ -11,7 +11,8 @@ import CalendarWidget from "../components/dashboard/CalendarWidget.jsx";
 import TaskFormModal from "../components/dashboard/TaskFormModal.jsx";
 import TaskDetailModal from "../components/dashboard/TaskDetailModal.jsx";
 import { useTasks } from "../context/TasksContext.jsx";
-import { getAnalytics, getTaskColumn } from "../utils/taskHelpers.js";
+import { getAnalytics, getTaskColumn, getTaskPriority, getTaskLabels } from "../utils/taskHelpers.js";
+import { getAssigneeId } from "../utils/teamHelpers.js";
 
 const sectionTitles = {
   overview: { title: "Dashboard", subtitle: "Your productivity command center" },
@@ -70,10 +71,10 @@ export default function Dashboard() {
     setDetailOpen(false);
     setEditing({
       ...task,
-      priority: metaMap[task._id]?.priority || "medium",
+      priority: getTaskPriority(task, metaMap[task._id]),
       column: getTaskColumn(task, metaMap[task._id]),
-      labels: metaMap[task._id]?.labels || [],
-      assigneeId: metaMap[task._id]?.assigneeId || "",
+      labels: getTaskLabels(task, metaMap[task._id]),
+      assigneeId: getAssigneeId(task, metaMap[task._id]) || "",
     });
     setFormOpen(true);
   };

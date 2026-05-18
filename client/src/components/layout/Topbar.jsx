@@ -1,8 +1,18 @@
-import { Search, Bell, Sun, Moon, Plus, Menu } from "lucide-react";
+import { Search, Bell, Sun, Moon, Plus, Menu, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext.jsx";
+import { useAuth } from "../../context/AuthContext.jsx";
+import { getInitials } from "../../utils/teamHelpers.js";
 
 export default function Topbar({ onMenuClick, onNewTask, search, onSearch }) {
   const { isDark, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login", { replace: true });
+  };
 
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--border)] bg-[var(--topbar)]/80 backdrop-blur-xl">
@@ -45,9 +55,25 @@ export default function Topbar({ onMenuClick, onNewTask, search, onSearch }) {
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">New Task</span>
           </button>
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-semibold border-2 border-[var(--border)]">
-            PM
+
+          <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-[var(--border)]">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white text-sm font-semibold border-2 border-[var(--border)]">
+              {getInitials(user?.name || "U")}
+            </div>
+            <div className="text-left hidden lg:block">
+              <p className="text-xs font-medium text-[var(--text-primary)] leading-tight">{user?.name}</p>
+              <p className="text-[10px] text-[var(--text-muted)]">Team Lead</p>
+            </div>
           </div>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            title="Logout"
+            className="p-2.5 rounded-xl border border-[var(--border)] hover:bg-red-500/10 hover:text-red-400 text-[var(--text-secondary)] transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </header>

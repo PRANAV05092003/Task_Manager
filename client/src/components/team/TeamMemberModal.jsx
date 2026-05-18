@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { AVATAR_COLORS } from "../../utils/teamHelpers.js";
+import { AVATAR_COLORS, TEAM_ROLES } from "../../utils/teamHelpers.js";
 
-const empty = { name: "", email: "", role: "Member", color: AVATAR_COLORS[0] };
+const empty = { name: "", email: "", role: "member", color: AVATAR_COLORS[0] };
 
 export default function TeamMemberModal({ open, onClose, onSave, initial, loading }) {
   const [form, setForm] = useState(empty);
@@ -15,7 +15,7 @@ export default function TeamMemberModal({ open, onClose, onSave, initial, loadin
           ? {
               name: initial.name || "",
               email: initial.email || "",
-              role: initial.role || "Member",
+              role: initial.role || "member",
               color: initial.color || AVATAR_COLORS[0],
             }
           : empty
@@ -78,12 +78,20 @@ export default function TeamMemberModal({ open, onClose, onSave, initial, loadin
               </div>
               <div>
                 <label className="text-sm font-medium text-[var(--text-secondary)] mb-1.5 block">Role</label>
-                <input
+                <select
                   className="input-field"
                   value={form.role}
                   onChange={(e) => setForm({ ...form, role: e.target.value })}
-                  placeholder="Developer, Designer..."
-                />
+                >
+                  {TEAM_ROLES.map((r) => (
+                    <option key={r.value} value={r.value}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-[var(--text-muted)] mt-1">
+                  Team Lead assigns tasks to Managers and Members.
+                </p>
               </div>
               <div>
                 <label className="text-sm font-medium text-[var(--text-secondary)] mb-2 block">Avatar color</label>

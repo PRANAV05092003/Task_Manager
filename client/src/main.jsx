@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import App from "./App.jsx";
 import { ThemeProvider } from "./context/ThemeContext.jsx";
+import { AuthProvider } from "./context/AuthContext.jsx";
 import { TasksProvider } from "./context/TasksContext.jsx";
 import { TeamProvider } from "./context/TeamContext.jsx";
 import ErrorBoundary from "./components/ErrorBoundary.jsx";
@@ -19,18 +20,21 @@ ReactDOM.createRoot(root).render(
   <ErrorBoundary>
     <BrowserRouter>
       <ThemeProvider>
-        <TasksProvider>
-          <TeamProvider>
-            <App />
-          </TeamProvider>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              className: "glass-card !bg-[var(--card)] !text-[var(--text-primary)] !border-[var(--border)]",
-              duration: 3000,
-            }}
-          />
-        </TasksProvider>
+        <AuthProvider>
+          <TasksProvider>
+            <TeamProvider>
+              <App />
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  className:
+                    "glass-card !bg-[var(--card)] !text-[var(--text-primary)] !border-[var(--border)]",
+                  duration: 3000,
+                }}
+              />
+            </TeamProvider>
+          </TasksProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   </ErrorBoundary>

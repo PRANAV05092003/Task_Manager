@@ -3,6 +3,7 @@ import { ArrowRight, Users, Activity, Pencil } from "lucide-react";
 import { useTasks } from "../../context/TasksContext.jsx";
 import { useTeam } from "../../context/TeamContext.jsx";
 import { getAnalytics, formatDue } from "../../utils/taskHelpers.js";
+import { resolveAssignee } from "../../utils/teamHelpers.js";
 import { getMemberTaskCount } from "../../utils/teamHelpers.js";
 import MemberAvatar from "../team/MemberAvatar.jsx";
 
@@ -28,7 +29,7 @@ export default function OverviewWidgets({ onGoBoard, onManageTeam }) {
             <p className="text-sm text-[var(--text-muted)]">No tasks yet. Create your first task!</p>
           ) : (
             recent.map((task, i) => {
-              const assignee = getMember(metaMap[task._id]?.assigneeId);
+              const assignee = resolveAssignee(task, metaMap[task._id], getMember);
               return (
                 <motion.div
                   key={task._id}

@@ -7,12 +7,27 @@ export const AVATAR_COLORS = [
   "from-indigo-400 to-violet-500",
 ];
 
-export const DEFAULT_TEAM = [
-  { id: "tm_1", name: "Alex Chen", email: "alex@ithara.ai", role: "Lead", color: AVATAR_COLORS[0] },
-  { id: "tm_2", name: "Sam Rivera", email: "sam@ithara.ai", role: "Design", color: AVATAR_COLORS[1] },
-  { id: "tm_3", name: "Jordan Lee", email: "jordan@ithara.ai", role: "Developer", color: AVATAR_COLORS[2] },
-  { id: "tm_4", name: "Taylor Kim", email: "taylor@ithara.ai", role: "QA", color: AVATAR_COLORS[3] },
+export const TEAM_ROLES = [
+  { value: "team-lead", label: "Team Lead" },
+  { value: "manager", label: "Manager" },
+  { value: "member", label: "Team Member" },
 ];
+
+export const getRoleLabel = (role) =>
+  TEAM_ROLES.find((r) => r.value === role)?.label || role || "Member";
+
+export const normalizeMember = (m) => {
+  if (!m) return null;
+  const id = m._id || m.id;
+  return {
+    id,
+    _id: id,
+    name: m.name,
+    email: m.email || "",
+    role: m.role || "member",
+    color: m.color || AVATAR_COLORS[0],
+  };
+};
 
 export const getInitials = (name = "") =>
   name
@@ -23,5 +38,20 @@ export const getInitials = (name = "") =>
     .toUpperCase()
     .slice(0, 2) || "?";
 
-export const getMemberTaskCount = (memberId, tasks, metaMap) =>
-  tasks.filter((t) => metaMap[t._id]?.assigneeId === memberId).length;
+export const getAssigneeId = (task, meta = {}) => {
+  if (!task) return null;
+  if (task.assignee?._id) return task.assignee._id;
+  if (typeof task.assignee === "string") return task.assignee;
+  return meta?.assigneeId || null;
+};
+
+export const getMemberTaskCount = (memberId, tasks, metaMap = {}) =>
+  tasks.filter((t) => getAssigneeId(t, metaMap[t._id]) === memberId).length;
+
+export const resolveAssignee = (task, meta, getMember) => {
+  if (task?.assignee && typeof task.assignee === "object" && task.assignee.name) {
+    return normalizeMember(task.assignee);
+  }
+  const id = getAssigneeId(task, meta);
+  return id ? getMember(id) : null;
+};

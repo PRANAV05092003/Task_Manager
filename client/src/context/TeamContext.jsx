@@ -1,107 +1,111 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import toast from "react-hot-toast";
-import { DEFAULT_TEAM, AVATAR_COLORS } from "../utils/teamHelpers.js";
-import { makeId } from "../utils/taskHelpers.js";
-import { useTasks } from "./TasksContext.jsx";
-
-const TEAM_KEY = "ithara_team";
-
-const loadTeam = () => {
-  try {
-    const raw = localStorage.getItem(TEAM_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch {
-    /* ignore */
-  }
-  localStorage.setItem(TEAM_KEY, JSON.stringify(DEFAULT_TEAM));
-  return DEFAULT_TEAM;
-};
+import api from "../api/axios.js";
+import { normalizeMember, AVATAR_COLORS } from "../utils/teamHelpers.js";
+import { useAuth } from "./AuthContext.jsx";
 
 const TeamContext = createContext(null);
 
 export const TeamProvider = ({ children }) => {
-  const [members, setMembers] = useState(loadTeam);
-  const { metaMap, persistMeta } = useTasks();
+  const { user } = useAuth();
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const save = useCallback((next) => {
-    setMembers(next);
-    localStorage.setItem(TEAM_KEY, JSON.stringify(next));
-  }, []);
+  const fetchMembers = useCallback(async () => {
+    if (!user) {
+      setMembers([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await api.get("/team");
+      setMembers(Array.isArray(data) ? data.map(normalizeMember) : []);
+    } catch (err) {
+      toast.error(err.message || "Failed to load team");
+      setMembers([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
-  const getMember = useCallback((id) => members.find((m) => m.id === id) || null, [members]);
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
+
+  const getMember = useCallback(
+    (id) => {
+      if (!id) return null;
+      return members.find((m) => m.id === id || m._id === id) || null;
+    },
+    [members]
+  );
 
   const addMember = useCallback(
-    ({ name, email = "", role = "Member", color }) => {
+    async ({ name, email = "", role = "member", color }) => {
       const trimmed = name?.trim();
       if (!trimmed) {
         toast.error("Name is required");
         return null;
       }
-      const member = {
-        id: makeId().replace("local_", "tm_"),
-        name: trimmed,
-        email: email.trim(),
-        role: role.trim() || "Member",
-        color: color || AVATAR_COLORS[members.length % AVATAR_COLORS.length],
-      };
-      save([...members, member]);
-      toast.success(`${member.name} added to team`);
-      return member;
+      try {
+        const { data } = await api.post("/team", {
+          name: trimmed,
+          email: email.trim(),
+          role: role || "member",
+          color: color || AVATAR_COLORS[members.length % AVATAR_COLORS.length],
+        });
+        const member = normalizeMember(data);
+        setMembers((prev) => [...prev, member]);
+        toast.success(`${member.name} added to team`);
+        return member;
+      } catch (err) {
+        toast.error(err.message || "Failed to add member");
+        return null;
+      }
     },
-    [members, save]
+    [members.length]
   );
 
-  const updateMember = useCallback(
-    (id, updates) => {
-      const trimmed = updates.name?.trim();
-      if (updates.name !== undefined && !trimmed) {
-        toast.error("Name is required");
-        return false;
-      }
-      const next = members.map((m) =>
-        m.id === id
-          ? {
-              ...m,
-              ...(updates.name !== undefined && { name: trimmed }),
-              ...(updates.email !== undefined && { email: updates.email.trim() }),
-              ...(updates.role !== undefined && { role: updates.role.trim() || "Member" }),
-              ...(updates.color !== undefined && { color: updates.color }),
-            }
-          : m
-      );
-      save(next);
+  const updateMember = useCallback(async (id, updates) => {
+    const trimmed = updates.name?.trim();
+    if (updates.name !== undefined && !trimmed) {
+      toast.error("Name is required");
+      return false;
+    }
+    try {
+      const { data } = await api.put(`/team/${id}`, {
+        ...(updates.name !== undefined && { name: trimmed }),
+        ...(updates.email !== undefined && { email: updates.email.trim() }),
+        ...(updates.role !== undefined && { role: updates.role }),
+        ...(updates.color !== undefined && { color: updates.color }),
+      });
+      const updated = normalizeMember(data);
+      setMembers((prev) => prev.map((m) => (m.id === id ? updated : m)));
       toast.success("Team member updated");
       return true;
-    },
-    [members, save]
-  );
+    } catch (err) {
+      toast.error(err.message || "Failed to update member");
+      return false;
+    }
+  }, []);
 
   const deleteMember = useCallback(
-    (id) => {
-      const member = members.find((m) => m.id === id);
-      if (!member) return;
-
-      const nextMeta = { ...metaMap };
-      let cleared = 0;
-      Object.keys(nextMeta).forEach((taskId) => {
-        if (nextMeta[taskId]?.assigneeId === id) {
-          nextMeta[taskId] = { ...nextMeta[taskId], assigneeId: null };
-          cleared++;
-        }
-      });
-      if (cleared > 0) persistMeta(nextMeta);
-
-      save(members.filter((m) => m.id !== id));
-      toast.success(`${member.name} removed from team`);
+    async (id) => {
+      try {
+        await api.delete(`/team/${id}`);
+        setMembers((prev) => prev.filter((m) => m.id !== id));
+        toast.success("Team member removed");
+      } catch (err) {
+        toast.error(err.message || "Failed to remove member");
+      }
     },
-    [members, metaMap, persistMeta, save]
+    []
   );
 
   return (
-    <TeamContext.Provider value={{ members, addMember, updateMember, deleteMember, getMember }}>
+    <TeamContext.Provider
+      value={{ members, loading, fetchMembers, addMember, updateMember, deleteMember, getMember }}
+    >
       {children}
     </TeamContext.Provider>
   );

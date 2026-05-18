@@ -1,9 +1,10 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Calendar, Trash2, MessageSquare, Paperclip, Send, User } from "lucide-react";
 import { useState } from "react";
-import { PRIORITIES, formatDue, getTaskColumn } from "../../utils/taskHelpers.js";
+import { PRIORITIES, formatDue, getTaskColumn, getTaskPriority, getTaskLabels } from "../../utils/taskHelpers.js";
 import { useTasks } from "../../context/TasksContext.jsx";
 import { useTeam } from "../../context/TeamContext.jsx";
+import { getAssigneeId, resolveAssignee, getRoleLabel } from "../../utils/teamHelpers.js";
 import MemberAvatar from "../team/MemberAvatar.jsx";
 
 export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onDelete }) {
@@ -13,10 +14,11 @@ export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onD
 
   if (!task) return null;
 
-  const priority = PRIORITIES[meta?.priority || "medium"];
+  const priority = PRIORITIES[getTaskPriority(task, meta)];
   const column = getTaskColumn(task, meta);
   const comments = meta?.comments || [];
-  const assignee = getMember(meta?.assigneeId);
+  const assignee = resolveAssignee(task, meta, getMember);
+  const assigneeId = getAssigneeId(task, meta);
 
   const addComment = () => {
     if (!comment.trim()) return;
@@ -79,12 +81,12 @@ export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onD
                   <p className="text-sm font-medium text-[var(--text-primary)]">
                     {assignee ? assignee.name : "Unassigned"}
                   </p>
-                  {assignee && <p className="text-xs text-[var(--text-muted)]">{assignee.role}</p>}
+                  {assignee && <p className="text-xs text-[var(--text-muted)]">{getRoleLabel(assignee.role)}</p>}
                 </div>
               </div>
               <select
                 className="input-field"
-                value={meta?.assigneeId || ""}
+                value={assigneeId || ""}
                 onChange={(e) => handleAssigneeChange(e.target.value)}
               >
                 <option value="">Unassigned</option>
@@ -107,7 +109,7 @@ export default function TaskDetailModal({ task, meta, open, onClose, onEdit, onD
                   Due {formatDue(task.dueDate)}
                 </span>
               )}
-              {(meta?.labels || []).map((label) => (
+              {getTaskLabels(task, meta).map((label) => (
                 <span key={label} className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 text-xs border border-violet-500/20">
                   {label}
                 </span>

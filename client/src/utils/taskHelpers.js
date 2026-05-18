@@ -12,11 +12,16 @@ export const PRIORITIES = {
 };
 
 export const getTaskColumn = (task, meta = {}) => {
-  if (meta.column) return meta.column;
-  if (task.status === "completed") return "completed";
-  if (task.status === "in-progress") return "in-progress";
+  if (task?.kanbanColumn) return task.kanbanColumn;
+  if (meta?.column) return meta.column;
+  if (task?.status === "completed") return "completed";
+  if (task?.status === "in-progress") return "in-progress";
   return "todo";
 };
+
+export const getTaskPriority = (task, meta = {}) => task?.priority || meta?.priority || "medium";
+
+export const getTaskLabels = (task, meta = {}) => task?.labels || meta?.labels || [];
 
 export const columnToStatus = (columnId) => {
   const col = COLUMNS.find((c) => c.id === columnId);
@@ -49,9 +54,9 @@ export const getAnalytics = (tasks, metaMap) => {
   ].filter((d) => d.value > 0);
 
   const byPriority = [
-    { name: "High", value: tasks.filter((t) => metaMap[t._id]?.priority === "high").length, fill: "#ef4444" },
-    { name: "Medium", value: tasks.filter((t) => metaMap[t._id]?.priority === "medium").length, fill: "#f59e0b" },
-    { name: "Low", value: tasks.filter((t) => metaMap[t._id]?.priority === "low").length, fill: "#22c55e" },
+    { name: "High", value: tasks.filter((t) => getTaskPriority(t, metaMap[t._id]) === "high").length, fill: "#ef4444" },
+    { name: "Medium", value: tasks.filter((t) => getTaskPriority(t, metaMap[t._id]) === "medium").length, fill: "#f59e0b" },
+    { name: "Low", value: tasks.filter((t) => getTaskPriority(t, metaMap[t._id]) === "low").length, fill: "#22c55e" },
   ].filter((d) => d.value > 0);
 
   const weekly = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => ({

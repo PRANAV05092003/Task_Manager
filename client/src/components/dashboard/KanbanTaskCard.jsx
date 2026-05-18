@@ -1,18 +1,20 @@
 import { motion } from "framer-motion";
 import { useDraggable } from "@dnd-kit/core";
 import { Calendar, GripVertical, MessageSquare, Paperclip } from "lucide-react";
-import { PRIORITIES, formatDue, isOverdue } from "../../utils/taskHelpers.js";
+import { PRIORITIES, formatDue, isOverdue, getTaskPriority, getTaskLabels } from "../../utils/taskHelpers.js";
 import { useTeam } from "../../context/TeamContext.jsx";
+import { resolveAssignee } from "../../utils/teamHelpers.js";
 import MemberAvatar from "../team/MemberAvatar.jsx";
 
 export default function KanbanTaskCard({ task, meta, onClick }) {
   const { getMember } = useTeam();
-  const assignee = getMember(meta?.assigneeId);
+  const assignee = resolveAssignee(task, meta, getMember);
+  const priority = PRIORITIES[getTaskPriority(task, meta)];
+  const labels = getTaskLabels(task, meta);
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: task._id,
   });
 
-  const priority = PRIORITIES[meta?.priority || "medium"];
   const overdue = isOverdue(task.dueDate) && task.status !== "completed";
 
   const style = transform
@@ -52,7 +54,7 @@ export default function KanbanTaskCard({ task, meta, onClick }) {
         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${priority.className}`}>
           {priority.label}
         </span>
-        {(meta?.labels || []).slice(0, 2).map((label) => (
+        {labels.slice(0, 2).map((label) => (
           <span
             key={label}
             className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"

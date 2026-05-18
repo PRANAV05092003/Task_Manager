@@ -13,7 +13,7 @@ export default function Login() {
   const navigate = useNavigate();
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   const handleSubmit = async (e) => {
@@ -22,7 +22,7 @@ export default function Login() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     } catch (err) {
       setError(err.message || "Login failed. Check your email and password.");
     } finally {

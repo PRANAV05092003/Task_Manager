@@ -17,8 +17,27 @@ const taskSchema = new mongoose.Schema(
       enum: ["pending", "in-progress", "completed"],
       default: "pending",
     },
+    kanbanColumn: {
+      type: String,
+      enum: ["todo", "in-progress", "review", "completed"],
+      default: "todo",
+    },
+    priority: {
+      type: String,
+      enum: ["high", "medium", "low"],
+      default: "medium",
+    },
+    labels: {
+      type: [String],
+      default: [],
+    },
     dueDate: {
       type: Date,
+    },
+    assignee: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TeamMember",
+      default: null,
     },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,

@@ -3,12 +3,12 @@ import { motion } from "framer-motion";
 import { Plus, Pencil, Trash2, Mail, Briefcase } from "lucide-react";
 import { useTeam } from "../../context/TeamContext.jsx";
 import { useTasks } from "../../context/TasksContext.jsx";
-import { getMemberTaskCount } from "../../utils/teamHelpers.js";
+import { getMemberTaskCount, getRoleLabel } from "../../utils/teamHelpers.js";
 import MemberAvatar from "./MemberAvatar.jsx";
 import TeamMemberModal from "./TeamMemberModal.jsx";
 
 export default function TeamPanel() {
-  const { members, addMember, updateMember, deleteMember } = useTeam();
+  const { members, loading, addMember, updateMember, deleteMember } = useTeam();
   const { tasks, metaMap } = useTasks();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -28,12 +28,18 @@ export default function TeamPanel() {
     setSaving(true);
     try {
       if (editing) {
-        updateMember(editing.id, form);
+        const ok = await updateMember(editing.id, form);
+        if (ok) {
+          setModalOpen(false);
+          setEditing(null);
+        }
       } else {
-        addMember(form);
+        const member = await addMember(form);
+        if (member) {
+          setModalOpen(false);
+          setEditing(null);
+        }
       }
-      setModalOpen(false);
-      setEditing(null);
     } finally {
       setSaving(false);
     }
@@ -58,7 +64,13 @@ export default function TeamPanel() {
         </button>
       </div>
 
-      {members.length === 0 ? (
+      {loading ? (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="skeleton h-40 rounded-2xl" />
+          ))}
+        </div>
+      ) : members.length === 0 ? (
         <div className="glass-card p-12 text-center">
           <p className="text-[var(--text-muted)] mb-4">No team members yet</p>
           <button type="button" onClick={openAdd} className="btn-primary">
@@ -82,7 +94,7 @@ export default function TeamPanel() {
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-[var(--text-primary)] truncate">{member.name}</h3>
                     <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-0.5">
-                      <Briefcase className="w-3 h-3" /> {member.role}
+                      <Briefcase className="w-3 h-3" /> {getRoleLabel(member.role)}
                     </p>
                     {member.email && (
                       <p className="text-xs text-[var(--text-muted)] flex items-center gap-1 mt-1 truncate">
@@ -113,7 +125,7 @@ export default function TeamPanel() {
               </motion.div>
             );
           })}
-        </motion.div>
+        </div>
       )}
 
       <TeamMemberModal
